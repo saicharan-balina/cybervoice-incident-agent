@@ -98,4 +98,27 @@ describe('CyberVoice AI Backend API Tests', () => {
     const getRes = await request(app).get(`/api/incidents/${createdId}`);
     expect(getRes.status).toBe(404);
   });
+
+  it('GET / should serve frontend index.html for single-URL Replit deployment', async () => {
+    const res = await request(app).get('/');
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('<html');
+    expect(res.text).toContain('CyberVoice AI');
+  });
+
+  it('GET /assistant and /dashboard should return index.html for SPA client routing', async () => {
+    const assistantRes = await request(app).get('/assistant');
+    expect(assistantRes.status).toBe(200);
+    expect(assistantRes.text).toContain('<html');
+
+    const dashRes = await request(app).get('/dashboard');
+    expect(dashRes.status).toBe(200);
+    expect(dashRes.text).toContain('<html');
+  });
+
+  it('GET /api/nonexistent should return 404 JSON, not HTML', async () => {
+    const res = await request(app).get('/api/nonexistent');
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: 'API route not found' });
+  });
 });

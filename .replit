@@ -1,0 +1,16 @@
+# Replit Configuration for CyberVoice AI (Single-Project Full-Stack Deployment)
+run = "npm start"
+entrypoint = "server/dist/index.js"
+modules = ["nodejs-20"]
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["node", "server/dist/index.js"]
+deploymentTarget = "cloudrun"
+build = ["npm", "run", "build"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80

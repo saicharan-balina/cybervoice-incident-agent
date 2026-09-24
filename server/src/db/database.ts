@@ -2,7 +2,7 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const dbPath = process.env.DATABASE_URL || path.join(__dirname, '../../dev.db');
+const dbPath = process.env.DATABASE_URL || path.resolve(process.cwd(), 'dev.db');
 const resolvedDbPath = path.isAbsolute(dbPath) ? dbPath : path.resolve(process.cwd(), dbPath);
 
 // Ensure directory exists

@@ -17,37 +17,35 @@ Powered natively by the **AssemblyAI Voice Agent API**, CyberVoice conducts real
 
 ---
 
-## 🏗️ Architecture & Technology Stack
+## 🏗️ Architecture & Single-URL Deployment
+
+The complete application is built and deployed as a **single-tier unified service** accessible over a **single public URL**:
 
 ```
-                     ┌──────────────────────────────────────────────┐
-                     │            User (Microphone & Speaker)       │
-                     └──────────────────────┬───────────────────────┘
-                                            │ PCM16 (24kHz) Audio / Transcripts
-                                            ▼
-                     ┌──────────────────────────────────────────────┐
-                     │          React + Vite Frontend (SPA)         │
-                     │  - Tailwind CSS Cybersecurity Theme          │
-                     │  - AudioVisualizer & Web Audio Streaming      │
-                     │  - Incident Preview & Confirmation Modal     │
-                     └───────┬──────────────────────────────▲───────┘
-                             │                              │
-         GET /api/voice/token│ (Short-Lived Token)          │ WSS /v1/ws?token=...
-                             ▼                              │ (Bidirectional Voice)
-  ┌─────────────────────────────────────┐         ┌─────────┴────────────────────────┐
-  │   Node.js + Express.js Backend API   │         │    AssemblyAI Voice Agent API    │
-  │   - Rate limiting, Helmet, CORS     │         │   (wss://agents.assemblyai.com)  │
-  │   - Zod schema validation           │         │  - Real-time STT / TTS           │
-  │   - Promisified SQLite DB Engine    │         │  - Conversational LLM            │
-  │   - AssemblyAI Token Minter Service │         │  - Dynamic Tool Calling          │
-  └──────────────────┬──────────────────┘         └──────────────────────────────────┘
-                     │ SQL Queries
-                     ▼
-  ┌─────────────────────────────────────┐
-  │      SQLite Database (dev.db)       │
-  │      - incidents table              │
-  │      - WAL mode & Indexing          │
-  └─────────────────────────────────────┘
+Browser (Microphone & Speaker)
+   |
+   | HTTPS (Audio, Transcripts, UI)
+   v
+Replit Public URL (or Single Port Host)
+   |
+   v
+Node.js + Express Production Server (0.0.0.0:PORT)
+   |
+   +--> Static Assets & React SPA Fallback (Client build: /client/dist)
+   |    - Overview Page (/)
+   |    - Voice Assistant (/assistant)
+   |    - Incident Dashboard (/dashboard)
+   |    - Incident Details (/incidents/:id)
+   |    - Help & Settings (/help)
+   |
+   +--> Backend REST API (/api/*)
+   |    - Health Check (/api/health)
+   |    - AssemblyAI Token Minter (/api/voice/token)
+   |    - Incident CRUD (/api/incidents)
+   |
+   +--> SQLite Database (dev.db with WAL mode & indexing)
+   |
+   +--> AssemblyAI Voice Agent WebSocket (wss://agents.assemblyai.com/v1/ws)
 ```
 
 ### Technology Highlights
@@ -60,19 +58,67 @@ Powered natively by the **AssemblyAI Voice Agent API**, CyberVoice conducts real
 
 ## 🛡️ Security Implementation & Secret Management
 
-- **Zero Client-Side Keys:** The permanent `ASSEMBLYAI_API_KEY` is strictly confined to the backend environment (`server/.env`). The frontend only receives short-lived temporary tokens via `GET /api/voice/token`.
+- **Zero Client-Side Keys:** The permanent `ASSEMBLYAI_API_KEY` is strictly confined to the backend environment (`server/.env` or Replit Secrets). The frontend only receives short-lived temporary tokens via `GET /api/voice/token`.
 - **No Confidential Credential Collection:** CyberVoice explicitly instructs users never to share passwords, PINs, OTP codes, or full credit card numbers.
 - **Explicit Human Confirmation:** No AI hallucination can save a record without explicit user confirmation.
 - **Rate-Limited & Sanitized:** Input fields have character bounds, SQL queries are parameterized, and production errors suppress internal stack traces.
 
 ---
 
-## 🚀 Prerequisites & Installation
+## ☁️ Replit Deployment Guide (Single Project, Single URL)
 
-### Prerequisites
-- **Node.js** (v18.0.0 or higher; tested on v20.10.0)
-- **npm** (v9.0.0 or higher)
-- **AssemblyAI API Key** with Voice Agent API access
+Deploying CyberVoice AI on Replit requires only a single Repl repository:
+
+### Step 1: Import into Replit
+1. Open [Replit](https://replit.com) and click **Create Repl**.
+2. Select **Import from Git** and paste:
+   ```
+   https://github.com/saicharan-balina/cybervoice-incident-agent.git
+   ```
+3. Choose the **Node.js** template and click **Import from Git**.
+
+### Step 2: Configure Replit Secrets
+In your Repl, open the **Secrets** tool (the padlock icon in the left sidebar) and add:
+
+| Secret Key | Description |
+| :--- | :--- |
+| `ASSEMBLYAI_API_KEY` | Your AssemblyAI API key (starts with your account key) |
+| `NODE_ENV` | `production` |
+
+*(Note: Never enter your API key in code files or commit `.env` files).*
+
+### Step 3: Run the Application
+The included [`.replit`](file:///.replit) file automatically instructs Replit how to run the project:
+```bash
+# Build frontend & backend
+npm run build
+
+# Start single unified server
+npm start
+```
+Click the green **Run** button at the top of the Repl. Replit will:
+1. Automatically install dependencies.
+2. Build the React client into `client/dist`.
+3. Compile the Express backend into `server/dist`.
+4. Launch the unified server bound to `0.0.0.0:$PORT`.
+5. Open the web view showing your public Replit URL (e.g., `https://cybervoice-incident-agent.<username>.repl.co`).
+
+### Step 4: Verify Deployment
+- **Home UI:** Visit `https://your-repl-url/`
+- **Health Check:** Visit `https://your-repl-url/api/health` — should return:
+  ```json
+  {
+    "status": "ok",
+    "service": "CyberVoice AI API",
+    "database": "healthy",
+    "assemblyai": { "configured": true }
+  }
+  ```
+- **Voice Agent:** Visit `https://your-repl-url/assistant` and start your voice session.
+
+---
+
+## 💻 Local Development Setup
 
 ### Installation Steps
 
@@ -84,77 +130,40 @@ Powered natively by the **AssemblyAI Voice Agent API**, CyberVoice conducts real
 
 2. Install dependencies:
    ```bash
-   # From root:
    npm run install:all
-   # Or individually:
-   cd server && npm install
-   cd ../client && npm install
    ```
 
-3. Install frontend dependencies:
+3. Configure local environment:
    ```bash
-   cd ../client
-   npm install
+   cp server/.env.example server/.env
    ```
-
----
-
-## ⚙️ Environment Configuration
-
-1. In the `server` directory, copy the example environment configuration:
-   ```bash
-   cp .env.example .env
-   ```
-2. Populate `server/.env`:
+   Populate `server/.env`:
    ```ini
    ASSEMBLYAI_API_KEY=your_assemblyai_api_key_here
    PORT=5000
-   FRONTEND_URL=http://localhost:5173
    DATABASE_URL=./dev.db
    NODE_ENV=development
    ```
 
-*(Note: Never commit your `.env` file to version control. The `.gitignore` is pre-configured to exclude all `.env` files and `.db` databases).*
+4. Run locally:
+   ```bash
+   # Option A: Run unified single-port production server
+   npm run build
+   npm start
 
----
-
-## 💻 Running the Application Locally
-
-You can run both server and client simultaneously:
-
-### Terminal 1: Backend Server
-```bash
-cd server
-npm run dev
-```
-*Backend runs on `http://localhost:5000`.*
-
-### Terminal 2: Frontend Client
-```bash
-cd client
-npm run dev
-```
-*Frontend opens at `http://localhost:5173`.*
+   # Option B: Run dual dev servers with hot reloading
+   npm run dev:server   # Terminal 1: Backend on http://localhost:5000
+   npm run dev:client   # Terminal 2: Frontend Vite on http://localhost:5173
+   ```
 
 ---
 
 ## 🧪 Testing & Verification
 
-Run the comprehensive test suite verifying the health checks, temporary token generation, Zod schema validation, and full incident CRUD lifecycle:
+Run the comprehensive test suite verifying the health checks, temporary token generation, Zod schema validation, full incident CRUD lifecycle, and single-URL frontend routing:
 
 ```bash
-cd server
 npm test
-```
-
-### Production Build Verification
-To ensure production bundle readiness:
-```bash
-# Verify backend compilation
-cd server && npm run build
-
-# Verify frontend production bundle
-cd ../client && npm run build
 ```
 
 ---
@@ -162,7 +171,7 @@ cd ../client && npm run build
 ## 🎙️ Live Demo Walkthrough (2–3 Minutes)
 
 ### Scenario A: Phishing SMS with Clicked Link (Golden Path)
-1. Navigate to `http://localhost:5173`.
+1. Navigate to the application URL (`/`).
 2. Review the CyberVoice AI landing page and click **"Start Voice Session"**.
 3. Allow microphone permission when prompted by your browser.
 4. Notice the audio visualizer transitions to **"Connected / Listening"**.
@@ -205,7 +214,7 @@ cd ../client && npm run build
 
 ---
 
-## ⚖️ Known Limitations & Future Roadmap
+## ⚖️ Storage & Deployment Considerations
+- **SQLite on Replit:** Standard Replit deployments maintain local files, but container restarts or serverless redeployments may cycle ephemeral files. For permanently persistent incident storage across redeployments, connect an external managed database (e.g., PostgreSQL or Turso) by setting `DATABASE_URL`.
 - **Browser Audio Requirements:** Requires a browser supporting the Web Audio API and `navigator.mediaDevices.getUserMedia` (Chrome, Edge, Firefox, Safari).
 - **Background Noise:** While browser echo-cancellation is enabled, quiet speaking environments provide optimal transcription accuracy.
-- **Enterprise Integrations:** Future releases will support direct SIEM webhook forwarding (Splunk, Microsoft Sentinel) and automated ticket creation (Jira Service Management).
